@@ -43,7 +43,7 @@ public:
       base_cmd.linear.x = base_cmd.linear.y = base_cmd.angular.z = 0;   
       //move forward
       if(cmd[0]=='w'){
-        base_cmd.linear.x = 5;//0.25;
+        base_cmd.linear.x = 0.25;//0.25;
       } 
       //turn left (yaw) and drive forward at the same time
       else if(cmd[0]=='a'){
@@ -62,6 +62,8 @@ public:
 
       //publish the assembled command
       cmd_vel_pub_.publish(base_cmd);
+
+      //system("rosservice call /image_saver/save");
     }
     return true;
   }
