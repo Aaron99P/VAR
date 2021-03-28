@@ -1,7 +1,10 @@
 #include <iostream>
+#include <fstream>
 
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
+
+using namespace std;
 
 class RobotDriver
 {
@@ -10,6 +13,7 @@ private:
   ros::NodeHandle nh_;
   //! We will be publishing to the "/base_controller/command" topic to issue commands
   ros::Publisher cmd_vel_pub_;
+
 
 public:
   //! ROS node initialization
@@ -44,16 +48,19 @@ public:
       //move forward
       if(cmd[0]=='w'){
         base_cmd.linear.x = 0.25;//0.25;
+        system("rosservice call /image_adelante/save");
       } 
       //turn left (yaw) and drive forward at the same time
       else if(cmd[0]=='a'){
         base_cmd.angular.z = 0.75;
         base_cmd.linear.x = 0.25;
+        system("rosservice call /image_izquierda/save");
       } 
       //turn right (yaw) and drive forward at the same time
       else if(cmd[0]=='d'){
         base_cmd.angular.z = -0.75;
         base_cmd.linear.x = 0.25;
+        system("rosservice call /image_derecha/save");
       } 
       //quit
       else if(cmd[0]=='.'){
@@ -63,7 +70,8 @@ public:
       //publish the assembled command
       cmd_vel_pub_.publish(base_cmd);
 
-      //system("rosservice call /image_saver/save");
+      
+
     }
     return true;
   }
