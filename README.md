@@ -1,7 +1,7 @@
 # VAR
 
 
-# Comandos:
+# Comandos para obtener las imágenes para el dataset:
 
 -----------------------------------------------------------------------------
 
