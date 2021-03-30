@@ -1,6 +1,40 @@
 # VAR
 
 
+# Comandos para poner en marcha el robot:
+
+-----------------------------------------------------------------------------
+
+1er terminal:
+
+roscore
+
+
+-----------------------------------------------------------------------------
+
+2º terminal:
+
+cd catkin_ws
+
+source devel/setup.bash
+
+roslaunch ejemplogazebo create_multi_robot.launch
+
+-----------------------------------------------------------------------------
+
+3er terminal:
+
+cd catkin_ws
+
+source devel/setup.bash
+
+rosrun python_node red_neuronal.py
+
+-----------------------------------------------------------------------------
+
+
+
+
 # Comandos para obtener las imágenes para el dataset:
 
 -----------------------------------------------------------------------------
