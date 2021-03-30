@@ -185,7 +185,8 @@ class red_neuronal:
     x = img_to_array(x)
     x = np.expand_dims(x, axis=0)
     '''
-    img = np.resize(f, (32,32, 3))
+    #img = np.resize(f, (32,32, 3))
+    img = cv2.resize(f, (self.longitud, self.altura))
     x = img_to_array(img)
     x = np.expand_dims(x, axis=0)
     #keras.backend.clear_session()
@@ -212,11 +213,11 @@ class red_neuronal:
     if pred == 0:
       cmd.linear.x = 0.25
     elif pred == 1:
-      base_cmd.angular.z = 0.75
-      base_cmd.linear.x = 0.25
+      cmd.angular.z = -0.75
+      cmd.linear.x = 0.25
     elif pred == 2:
-      base_cmd.angular.z = -0.75
-      base_cmd.linear.x = 0.25
+      cmd.angular.z = 0.75
+      cmd.linear.x = 0.25
 
     return cmd
       
@@ -227,7 +228,7 @@ class red_neuronal:
     try:
       #Obtenemos la imagen
       cv_image = self.bridge.imgmsg_to_cv2(image_message, desired_encoding='bgr8')
-      
+      cv2.waitKey(3)
       #La red decide que movimiento hacer
       pred = self.predict(cv_image)
 
