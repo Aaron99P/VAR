@@ -199,6 +199,8 @@ class red_neuronal:
     answer = np.argmax(result)
     if answer == 0:
       print("pred: Adelante")
+    #elif answer == 1:
+    #  print("pred: Atras")
     elif answer == 1:
       print("pred: Derecha")
     elif answer == 2:
@@ -211,7 +213,9 @@ class red_neuronal:
     cmd.linear.x = cmd.angular.z = 0
 
     if pred == 0:
-      cmd.linear.x = 0.25
+      cmd.linear.x = 0.5
+    #if pred == 1:
+      #cmd.linear.x = -0.25
     elif pred == 1:
       cmd.angular.z = -0.75
       cmd.linear.x = 0.25

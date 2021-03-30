@@ -38,7 +38,7 @@ public:
     while(nh_.ok()){
 
       std::cin.getline(cmd, 50);
-      if(cmd[0]!='w' && cmd[0]!='a' && cmd[0]!='d' && cmd[0]!='.')
+      if(cmd[0]!='w' && cmd[0]!='a' && cmd[0]!='d' && cmd[0]!='s' && cmd[0]!='.')
       {
         std::cout << "unknown command:" << cmd << "\n";
         continue;
@@ -61,6 +61,11 @@ public:
         base_cmd.angular.z = -0.75;
         base_cmd.linear.x = 0.25;
         system("rosservice call /image_derecha/save");
+      }
+      //turn right (yaw) and drive forward at the same time
+      else if(cmd[0]=='s'){
+        base_cmd.linear.x = -0.25;
+        system("rosservice call /image_atras/save");
       } 
       //quit
       else if(cmd[0]=='.'){
