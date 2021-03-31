@@ -71,16 +71,11 @@ public:
       else if(cmd[0]=='.'){
         break;
       }
-
       //publish the assembled command
-      cmd_vel_pub_.publish(base_cmd);
-
-      
-
+      cmd_vel_pub_.publish(base_cmd);   
     }
     return true;
   }
-
 };
 
 int main(int argc, char** argv)
