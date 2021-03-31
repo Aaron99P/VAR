@@ -46,11 +46,11 @@ from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 
+import json
+
 import numpy as np
 from keras.preprocessing.image import load_img, img_to_array
 from keras.models import load_model, model_from_json
-
-import json
 
 import tensorflow
 from tensorflow import keras
@@ -63,66 +63,14 @@ import Image as im
 import geometry_msgs.msg
 from geometry_msgs.msg import Twist
 
-'''
 
-longitud, altura = 32, 32
-modelo = './modelo.h5'
-pesos_modelo = './pesos.h5'
-cnn = load_model(modelo)
-cnn.load_weights(pesos_modelo)
-
-
-def predict(file):
-  x = load_img(file, target_size=(longitud, altura))
-  x = img_to_array(x)
-  x = np.expand_dims(x, axis=0)
-  array = cnn.predict(x)
-  result = array[0]
-  answer = np.argmax(result)
-  if answer == 0:
-    print("pred: Adelante")
-  elif answer == 1:
-    print("pred: Derecha")
-  elif answer == 2:
-    print("pred: Izquierda")
-
-  return answer
-
-
-def main():
-  print("Adelante:")
-  for i in range(30):
-    if(i<10): 
-      print(predict("./adelante/left000"+str(i)+".jpg"))
-    else:
-      print(predict("./adelante/left00"+str(i)+".jpg"))
-
-  print()
-  print("Izquierda:")
-  for i in range(30):
-    if(i<10):
-      print(predict("./izquierda/left000"+str(i)+".jpg"))
-    else:
-      print(predict("./izquierda/left00"+str(i)+".jpg"))
-
-  print()
-  print("Derecha:")
-  for i in range(30):
-    if(i<10):
-      print(predict("./derecha/left000"+str(i)+".jpg"))
-    else:
-      print(predict("./derecha/left00"+str(i)+".jpg"))
-    
-  return 0
-'''
-
-def cnn_model():
+def cnn_model(nb_classes):
   #
   # Neural Network Structure
   #
   
   activation = "relu"
-  nb_classes = 3
+  #nb_classes = 3
 
   input_shape = (32, 32, 3)
 
@@ -151,16 +99,22 @@ def cnn_model():
 
 class red_neuronal:
 
+  global cmd_vel_pub #publisher para mandar las velocidades al robot
+
   longitud, altura = 32, 32
-  #modelo = './modelo.json'
-  pesos_modelo = './pesos.h5'
-  model = cnn_model()
-  model.load_weights(pesos_modelo)
+
+  #Modelo para la navegacion
+  pesosNavegacion = './pesosNavegacion.h5'
+  modelNavegacion = cnn_model(3)
+  modelNavegacion.load_weights(pesosNavegacion)
+
+  #Modelo para la deteccion de otro robot
+  pesosDeteccion = './pesosDeteccion.h5'
+  modelDeteccion = cnn_model(2)
+  modelDeteccion.load_weights(pesosDeteccion)
+  
   global graph
   graph = tensorflow.get_default_graph()
-  global cmd_vel_pub
-
-  
 
   def __init__(self):
     #self.image_pub = rospy.Publisher("image_topic_2",Image)
@@ -174,37 +128,43 @@ class red_neuronal:
     #cnn = self.cnn_model()
     #self.model.load_weights(self.pesos_modelo)
 
-  
-
-  def predict(self, f):
-    '''
-    x = load_img(img, target_size=(self.longitud, self.altura))
-    #x = file.resize((32, 32))
-    #x = file.resize((self.longitud, self.altura))
-    #x = cv2.resize(file, (self.longitud, self.altura))
-    x = img_to_array(x)
-    x = np.expand_dims(x, axis=0)
-    '''
-    #img = np.resize(f, (32,32, 3))
+  def predictNavegacion(self, f):
     img = cv2.resize(f, (self.longitud, self.altura))
     x = img_to_array(img)
     x = np.expand_dims(x, axis=0)
     #keras.backend.clear_session()
     with graph.as_default():
-      self.model._make_predict_function()
-      array = self.model.predict(x)
-      print(array)
+      self.modelNavegacion._make_predict_function()
+      array = self.modelNavegacion.predict(x)
+      #print(array)
     
     result = array[0]
     answer = np.argmax(result)
     if answer == 0:
       print("pred: Adelante")
-    #elif answer == 1:
-    #  print("pred: Atras")
     elif answer == 1:
       print("pred: Derecha")
     elif answer == 2:
       print("pred: Izquierda")
+
+    return answer
+
+  def predictDeteccion(self, f):
+    img = cv2.resize(f, (self.longitud, self.altura))
+    x = img_to_array(img)
+    x = np.expand_dims(x, axis=0)
+    #keras.backend.clear_session()
+    with graph.as_default():
+      self.modelDeteccion._make_predict_function()
+      array = self.modelDeteccion.predict(x)
+      #print(array)
+    
+    result = array[0]
+    answer = np.argmax(result)
+    if answer == 0:
+      print("pred: No veo un Robot")
+    elif answer == 1:
+      print("pred: VEO UN ROBOT")
 
     return answer
 
@@ -214,8 +174,6 @@ class red_neuronal:
 
     if pred == 0:
       cmd.linear.x = 0.5
-    #if pred == 1:
-      #cmd.linear.x = -0.25
     elif pred == 1:
       cmd.angular.z = -0.75
       cmd.linear.x = 0.25
@@ -233,14 +191,21 @@ class red_neuronal:
       #Obtenemos la imagen
       cv_image = self.bridge.imgmsg_to_cv2(image_message, desired_encoding='bgr8')
       cv2.waitKey(3)
+
       #La red decide que movimiento hacer
-      pred = self.predict(cv_image)
+      pred = self.predictNavegacion(cv_image)
 
       #Calculamos la velocidad que vamos a enviar al robot
       base_cmd = self.velocidad(pred)
 
       #Enviamos la velocidad
       self.cmd_vel_pub.publish(base_cmd)
+
+      #La red de deteccion dice si hay o no un robot
+      det = self.predictDeteccion(cv_image)
+
+      #Si detecta un robot lo indicamos por teminal:
+      #print("VEO UN ROBOT")
 
     except CvBridgeError as e:
       print(e)

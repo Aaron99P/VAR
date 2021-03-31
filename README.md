@@ -68,27 +68,31 @@ cd catkin_ws
 
 source devel/setup.bash
 
-cd images
 
-***************
 
-cd adelante
+Para imágenes de ir adelante:
+
+cd images/adelante
 
 rosrun image_view image_saver image:=robot1/camera/rgb/image_raw _save_all_image:=false __name:=image_adelante
 
-***************
 
-cd derecha
+
+Para imágenes de ir a la derecha:
+
+cd images/derecha
 
 rosrun image_view image_saver image:=robot1/camera/rgb/image_raw _save_all_image:=false __name:=image_derecha
 
-***************
 
-cd izquierda
+
+Para imágenes de ir a la izquierda:
+
+cd images/izquierda
 
 rosrun image_view image_saver image:=robot1/camera/rgb/image_raw _save_all_image:=false __name:=image_izquierda
 
-***************
+
 
 
 -----------------------------------------------------------------------------
