@@ -17,3 +17,8 @@ Creacion de "nubes de puntos":
 		python2 pc_metodo1.py <ruta a la carpeta que contiene las 2 fotos>
     METODO 2 (con rectificación de imagen): 
 		python2 pc_metodo2.py <ruta a la carpeta que contiene las 2 fotos>
+
+Para ejecutar todas las nubes de puntos de manera rapida se pueden usar los scripts sh:
+    sh pcm1.sh
+Y
+    sh pcm2.sh
