@@ -9,3 +9,11 @@ CALIBRACIÓN:
     EJEMPLO PARA trasera1::
 
     python2 ./camera_calibration/calibration.py trasera1 ./camera_calibration/calibration_images/ ./camera_calibration/calibration_result/
+
+
+Creacion de "nubes de puntos":
+
+    METODO 1: 
+		python2 pc_metodo1.py <ruta a la carpeta que contiene las 2 fotos>
+    METODO 2 (con rectificación de imagen): 
+		python2 pc_metodo2.py <ruta a la carpeta que contiene las 2 fotos>
