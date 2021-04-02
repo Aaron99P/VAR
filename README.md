@@ -1,11 +1,10 @@
 # VAR
 
-Colab: https://colab.research.google.com/drive/1roSEU3DEOcriqLLaX9gLmQ1NB7ghYZZC
-
 Versiones utilizadas en ROS:
   - Python: 2.7
   - Tensorflow: 1.12.0
   - Keras: 2.2.4
+
 
 # Comandos para poner en marcha el robot:
 
