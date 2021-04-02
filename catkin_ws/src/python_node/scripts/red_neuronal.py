@@ -272,6 +272,8 @@ class red_neuronal:
       #La red de deteccion dice si hay o no un robot
       detectar = self.predictDeteccion(img)
 
+      cv2.waitKey(3)
+
     except CvBridgeError as e:
       print(e)
 
