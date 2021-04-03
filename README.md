@@ -1,5 +1,29 @@
 # VAR
 
+
+# AUTORES
+
+Aarón Picó Pascual
+Samuel Arévalo Cañestro
+
+
+# ENTREGA
+
+Se adjunta en la entrega el código realizado.
+
+Para obtener el proyecto completo:
+
+Repositorio en Github:
+	https://github.com/Aaron99P/VAR
+
+Descarga el repositorio en formato zip:
+	https://drive.google.com/file/d/1jVMMdpUY1pSR1gtlNb3PCzRYqj6Mxl_m
+
+Point Cloud tiene su propio leeme dentro de su directorio
+
+
+# VERSIONES
+
 Versiones utilizadas en ROS:
   - Python: 2.7
   - Tensorflow: 1.12.0

@@ -1,40 +1,4 @@
 #!/usr/bin/env python
-# Software License Agreement (BSD License)
-#
-# Copyright (c) 2008, Willow Garage, Inc.
-# All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above
-#    copyright notice, this list of conditions and the following
-#    disclaimer in the documentation and/or other materials provided
-#    with the distribution.
-#  * Neither the name of Willow Garage, Inc. nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-# COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
-# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
-#
-# Revision $Id$
-
-## Simple talker demo that published std_msgs/Strings messages
-## to the 'chatter' topic
 
 import rospy
 from std_msgs.msg import String
@@ -106,11 +70,6 @@ class red_neuronal:
   modelNavegacion.load_weights(pesosNavegacion)
 
   #Modelo para la deteccion de otro robot
-  pesosEsquivar = './pesosEsquivar.h5'
-  modelEsquivar = cnn_model(3)
-  modelEsquivar.load_weights(pesosEsquivar)
-
-  #Modelo para la deteccion de otro robot
   pesosDeteccion = './pesosDeteccion.h5'
   modelDeteccion = cnn_model(2)
   modelDeteccion.load_weights(pesosDeteccion)
@@ -127,7 +86,9 @@ class red_neuronal:
     self.cmd_vel_pub = rospy.Publisher("/robot1/mobile_base/commands/velocity", Twist)
     
 
-  def predictNavegacion(self, img):
+  def predictNavegacion(self, f):
+    #Redimensionamos la imagen a la que necesita la red
+    img = cv2.resize(f, (self.longitud, self.altura))
     x = img_to_array(img)
     x = np.expand_dims(x, axis=0)
 
@@ -153,33 +114,9 @@ class red_neuronal:
 
     return answer
 
-  def predictEsquivar(self, img):
-    x = img_to_array(img)
-    x = np.expand_dims(x, axis=0)
-
-    #Usamos el metodo predict del modelo
-    with graph.as_default():
-      self.modelEsquivar._make_predict_function()
-      array = self.modelEsquivar.predict(x)
-      result = array[0]
-
-    answer = np.argmax(result)
-    #La categoria 0 es que no hay que esquivar
-    #un robot
-    if answer == 0:
-      print("pred: NO HAY ESQUIVAR")
-    #La categoria 1 es que hay un robot a esquivar
-    #a la derecha
-    elif answer == 1:
-      print("pred: ROBOT A LA DERECHA. ESQUIVANDO")
-    #La categoria 2 es que hay un robot a esquivar
-    #a la izquierda
-    elif answer == 2:
-      print("pred: ROBOT A LA IZQUIERDA. ESQUIVANDO")
-
-    return answer
-
-  def predictDeteccion(self, img):
+  def predictDeteccion(self, f):
+    #Redimensionamos la imagen a la que necesita la red
+    img = cv2.resize(f, (self.longitud, self.altura))
     x = img_to_array(img)
     x = np.expand_dims(x, axis=0)
     
@@ -203,14 +140,14 @@ class red_neuronal:
     return answer
 
 
-  def velocidadNavegacion(self, pred):
+  def velocidad(self, pred):
     #Este es el tipo de mensaje que debe recibir el robot
     cmd = geometry_msgs.msg.Twist()
     cmd.linear.x = cmd.angular.z = 0
 
     #Si el robot debe seguir recto hacia adelante
     if pred == 0:
-      cmd.linear.x = 0.55
+      cmd.linear.x = 0.5
     #Si el robot tiene que girar a la derecha
     elif pred == 1:
       cmd.angular.z = -0.75
@@ -221,25 +158,6 @@ class red_neuronal:
       cmd.linear.x = 0.25
 
     return cmd
-
-  def velocidadEsquivar(self, pred):
-    #Este es el tipo de mensaje que debe recibir el robot
-    cmd = geometry_msgs.msg.Twist()
-    cmd.linear.x = cmd.angular.z = 0
-
-    #Si hay un robot a la derecha
-    #Gira a la izquierda
-    if pred == 1:
-      cmd.angular.z = 0.75
-      cmd.linear.x = 0.25
-
-    #Si hay un robot a la izquierda
-    #Gira a la derecha
-    elif pred == 2:
-      cmd.angular.z = -0.75
-      cmd.linear.x = 0.25      
-
-    return cmd
       
 
   #Metodo asociado al subscriber image_sub de la camara
@@ -247,32 +165,19 @@ class red_neuronal:
     try:
       #Obtenemos la imagen
       cv_image = self.bridge.imgmsg_to_cv2(image_message, desired_encoding='bgr8')
-      #Redimensionamos la imagen a la que necesita la red
-      img = cv2.resize(cv_image, (self.longitud, self.altura))
+      cv2.waitKey(3)
 
-      base_cmd = geometry_msgs.msg.Twist()
-      
-      #Red para esquivar
-      esquivar = self.predictEsquivar(img)
+      #La red decide que movimiento hacer
+      pred = self.predictNavegacion(cv_image)
 
-      #Si la red de esquivar no ha visto un robot
-      #utilizamos la red de navegacion
-      if esquivar == 0:
-        #La red de navegacion decide que movimiento hacer
-        navegacion = self.predictNavegacion(img)
-        #Calculamos la velocidad que vamos a enviar al robot
-        base_cmd = self.velocidadNavegacion(navegacion)
-      else:
-        #Calculamos la velocidad para esquivar
-        base_cmd = self.velocidadEsquivar(esquivar)
+      #Calculamos la velocidad que vamos a enviar al robot
+      base_cmd = self.velocidad(pred)
 
       #Enviamos la velocidad
       self.cmd_vel_pub.publish(base_cmd)
 
       #La red de deteccion dice si hay o no un robot
-      detectar = self.predictDeteccion(img)
-
-      cv2.waitKey(3)
+      det = self.predictDeteccion(cv_image)
 
     except CvBridgeError as e:
       print(e)
