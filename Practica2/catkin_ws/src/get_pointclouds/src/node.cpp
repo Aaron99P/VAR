@@ -13,6 +13,58 @@
 #include <pcl/registration/correspondence_estimation.h>
 #include <pcl/registration/correspondence_rejection.h>
 #include <pcl/registration/correspondence_rejection_sample_consensus.h>
+#include <geometry_msgs/Twist.h>
+
+
+ros::Publisher cmd_vel_pub_;
+
+
+//Función para la neavegación del robot (por teclado)
+void driveKeyboard() {
+
+	std::cout << "Type a command and then press enter.  "
+	"Use 'w' to move forward, 'a' to turn left, "
+	"'d' to turn right, '.' to exit.\n";
+
+	//we will be sending commands of type "twist"
+	geometry_msgs::Twist base_cmd;
+
+	char cmd[50];
+	std::cin.getline(cmd, 50);
+
+	if(cmd[0]!='w' && cmd[0]!='a' && cmd[0]!='d' && cmd[0]!='s' && cmd[0]!='.') std::cout << "unknown command:" << cmd << "\n";
+
+	base_cmd.linear.x = base_cmd.linear.y = base_cmd.angular.z = 0;   
+	
+	//move forward
+	if(cmd[0]=='w'){
+		base_cmd.linear.x = 0.25;//0.25;
+	} 
+
+	//turn left (yaw) and drive forward at the same time
+	else if(cmd[0]=='a'){
+		base_cmd.angular.z = 0.75;
+		//base_cmd.linear.x = 0.25;
+	
+	} 
+
+	//turn right (yaw) and drive forward at the same time
+	else if(cmd[0]=='d'){
+		base_cmd.angular.z = -0.75;
+		//base_cmd.linear.x = 0.25;
+	
+	}
+
+	//turn right (yaw) and drive forward at the same time
+	else if(cmd[0]=='s'){
+		base_cmd.linear.x = -0.25;
+	
+	} 
+
+	//publish the assembled command
+	cmd_vel_pub_.publish(base_cmd);   
+
+}
 
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr visu_pc (new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -20,6 +72,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr visu_pc (new pcl::PointCloud<pcl::PointXY
 pcl::PointCloud<pcl::PointWithScale>::Ptr anterior_keypoints;
 pcl::PointCloud<pcl::FPFHSignature33>::Ptr anterior_features;
 bool primero = true;
+
 
 void simpleVis ()
 {
@@ -191,13 +244,27 @@ void callback(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr& msg)
 	anterior_features = cloud_features;
 
 	primero = false;
+
+	driveKeyboard();
 	
 }
+
+/*
+int main(int argc, char** argv)
+{
+  //init the ROS node
+  ros::init(argc, argv, "robot_driver");
+  ros::NodeHandle nh;
+
+  RobotDriver driver(nh);
+  driver.driveKeyboard();
+}*/
 
 int main(int argc, char** argv)
 {
 	ros::init(argc, argv, "sub_pcl");
 	ros::NodeHandle nh;
+	cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("/mobile_base/commands/velocity", 1);
 	ros::Subscriber sub = nh.subscribe<pcl::PointCloud<pcl::PointXYZRGB> >("/camera/depth/points", 1, callback);
 
 	boost::thread t(simpleVis);
