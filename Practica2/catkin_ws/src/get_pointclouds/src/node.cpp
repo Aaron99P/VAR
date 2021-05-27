@@ -10,6 +10,9 @@
 #include <pcl/keypoints/sift_keypoint.h>
 #include <pcl/point_types.h>
 #include <pcl/features/fpfh.h>
+#include <pcl/registration/correspondence_estimation.h>
+#include <pcl/registration/correspondence_rejection.h>
+#include <pcl/registration/correspondence_rejection_sample_consensus.h>
 
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr visu_pc (new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -38,51 +41,72 @@ pcl::PointCloud<pcl::PointNormal>::Ptr detectorCaracteristicas(pcl::PointCloud<p
   	normalEst.setSearchMethod(tree_n);
   	normalEst.setRadiusSearch(0.03);
 
-	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_detect(new pcl::PointCloud<pcl::PointNormal>); // será el resultado
-  	normalEst.compute(*cloud_detect);
+	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_normals(new pcl::PointCloud<pcl::PointNormal>); // será el resultado
+  	normalEst.compute(*cloud_normals);
 
-	return cloud_detect;
+	return cloud_normals;
 }
 
 
-pcl::PointCloud<pcl::PointWithScale>::Ptr calculateKeyPoints(pcl::PointCloud<pcl::PointNormal>::Ptr cloud_detect){
+pcl::PointCloud<pcl::PointWithScale>::Ptr calculateKeyPoints(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filtered, pcl::PointCloud<pcl::PointNormal>::Ptr cloud_normals){
 
+	for(size_t i = 0; i<cloud_normals->points.size(); ++i)
+  	{
+    	cloud_normals->points[i].x = cloud_filtered->points[i].x;
+    	cloud_normals->points[i].y = cloud_filtered->points[i].y;
+    	cloud_normals->points[i].z = cloud_filtered->points[i].z;
+  	}
+
+	/*
 	// Parameters for sift computation
   	const float min_scale = 0.1f;
  	const int n_octaves = 6;
  	const int n_scales_per_octave = 10;
   	const float min_contrast = 0.5f;
+	*/
+
+	// Parameters for sift computation
+  	const float min_scale = 0.1f;
+ 	const int n_octaves = 3;
+ 	const int n_scales_per_octave = 4;
+  	const float min_contrast = 0.001f;
   
   
 	// Estimate the sift interest points using Intensity values from RGB values
 	pcl::SIFTKeypoint<pcl::PointNormal, pcl::PointWithScale> sift;
-	pcl::PointCloud<pcl::PointWithScale>::Ptr result;
+	pcl::PointCloud<pcl::PointWithScale>::Ptr result(new pcl::PointCloud<pcl::PointWithScale> ());
 	pcl::search::KdTree<pcl::PointNormal>::Ptr tree(new pcl::search::KdTree<pcl::PointNormal> ());
 	sift.setSearchMethod(tree);
 	sift.setScales(min_scale, n_octaves, n_scales_per_octave);
 	sift.setMinimumContrast(min_contrast);
-	sift.setInputCloud(cloud_detect);
+	sift.setInputCloud(cloud_normals);
 	sift.compute(*result);
-
+	
 	return result;
 
 }
 
 
-pcl::PointCloud<pcl::FPFHSignature33>::Ptr descriptorCarateristicas(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filtered, pcl::PointCloud<pcl::PointNormal>::Ptr cloud_detect,
+pcl::PointCloud<pcl::FPFHSignature33>::Ptr descriptorCarateristicas(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filtered, pcl::PointCloud<pcl::PointNormal>::Ptr cloud_normals,
 										pcl::PointCloud<pcl::PointWithScale>::Ptr keypoints){
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr keypoints_cloud (new pcl::PointCloud<pcl::PointXYZRGB>);
 
-	pcl::copyPointCloud (*keypoints, *keypoints_cloud);
+	pcl::copyPointCloud(*keypoints, *keypoints_cloud);
 
-	pcl::PointCloud<pcl::FPFHSignature33>::Ptr result;
+	cout << "cloud_filtered Size: " << cloud_filtered->size() << endl;
+	cout << "keypoints Size: " << keypoints->size() << endl;
+	cout << "keypoints_cloud Size: " << keypoints_cloud->size() << endl;
+
+
+	pcl::PointCloud<pcl::FPFHSignature33>::Ptr result(new pcl::PointCloud<pcl::FPFHSignature33> ());
 
 
 	pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZRGB> ());
 	pcl::FPFHEstimation<pcl::PointXYZRGB, pcl::PointNormal, pcl::FPFHSignature33> fpfh;
   	fpfh.setInputCloud (keypoints_cloud);
-  	fpfh.setInputNormals (cloud_detect);
+	//fpfh.setInputCloud (cloud_filtered);
+  	fpfh.setInputNormals (cloud_normals);
 	fpfh.setSearchSurface (cloud_filtered);
 	fpfh.setSearchMethod(tree);
   	fpfh.setRadiusSearch (0.07);
@@ -106,35 +130,68 @@ void callback(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr& msg)
 
 	pcl::VoxelGrid<pcl::PointXYZRGB > vGrid;
 	vGrid.setInputCloud (cloud);
-	vGrid.setLeafSize (0.03f, 0.03f, 0.03f);
+	vGrid.setLeafSize (0.025f, 0.025f, 0.025f);
 	vGrid.filter (*cloud_filtered);
 
 	cout << "Puntos tras VG: " << cloud_filtered->size() << endl;
 
 	//visu_pc = cloud_filtered;
 	//---------------------------------------------------------------------------------------------------
-
+	
 	//Detector de características
-	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_detect = detectorCaracteristicas(cloud_filtered);
-
+	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_normals = detectorCaracteristicas(cloud_filtered);
+	
 	//Hallamos los key points
-	pcl::PointCloud<pcl::PointWithScale>::Ptr keypoints = calculateKeyPoints(cloud_detect);
-
+	pcl::PointCloud<pcl::PointWithScale>::Ptr keypoints = calculateKeyPoints(cloud_filtered, cloud_normals);
+	
 	//Descriptor de características
-	pcl::PointCloud<pcl::FPFHSignature33>::Ptr cloud_features = descriptorCarateristicas(cloud_filtered, cloud_detect, keypoints);
-
-
+	pcl::PointCloud<pcl::FPFHSignature33>::Ptr cloud_features = descriptorCarateristicas(cloud_filtered, cloud_normals, keypoints);
+	
+	
 	if(!primero){
 
+		// Buscamos corespondencias ------------------------------------------------------------------
+		pcl::registration::CorrespondenceEstimation<pcl::FPFHSignature33, pcl::FPFHSignature33> est;
+		est.setInputSource(anterior_features);
+		est.setInputTarget(cloud_features);
+
+		pcl::Correspondences all_correspondences;
+		est.determineReciprocalCorrespondences(all_correspondences);
+		//--------------------------------------------------------------------------------------------
+
+		// Eliminamos las malas corespondencias ------------------------------------------------------
+		pcl::CorrespondencesConstPtr correspondences_p(new pcl::Correspondences(all_correspondences));
+
+		pcl::registration::CorrespondenceRejectorSampleConsensus<pcl::PointWithScale> ransac;
+		ransac.setInputSource(anterior_keypoints);
+		ransac.setInputTarget(keypoints);
+		ransac.setInlierThreshold(0.025);
+		ransac.setMaximumIterations(10000);
+		ransac.setRefineModel(true);
+		ransac.setInputCorrespondences(correspondences_p); 
+
+		pcl::Correspondences correspondences_out;
+		ransac.getCorrespondences(correspondences_out);
+
+		Eigen::Matrix4f transformation = ransac.getBestTransformation();		
+		//--------------------------------------------------------------------------------------------
 
 
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformed_cloud (new pcl::PointCloud<pcl::PointXYZRGB>);
+		pcl::transformPointCloud(*visu_pc, *transformed_cloud, transformation);
+
+		*visu_pc = *transformed_cloud + *cloud;
+
+
+	}else{
+		visu_pc = cloud_filtered;
 	}
 
-	*anterior_keypoints = *keypoints;
-	*anterior_features = *cloud_features;
+	anterior_keypoints = keypoints;
+	anterior_features = cloud_features;
 
 	primero = false;
-
+	
 }
 
 int main(int argc, char** argv)
