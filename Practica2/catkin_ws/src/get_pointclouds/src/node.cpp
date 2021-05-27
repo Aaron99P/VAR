@@ -14,6 +14,7 @@
 #include <pcl/registration/correspondence_rejection.h>
 #include <pcl/registration/correspondence_rejection_sample_consensus.h>
 #include <geometry_msgs/Twist.h>
+#include <pcl/registration/correspondence_estimation_normal_shooting.h>
 
 
 ros::Publisher cmd_vel_pub_;
@@ -38,26 +39,26 @@ void driveKeyboard() {
 	
 	//move forward
 	if(cmd[0]=='w'){
-		base_cmd.linear.x = 0.25;//0.25;
+		base_cmd.linear.x = 0.5;//0.25;
 	} 
 
 	//turn left (yaw) and drive forward at the same time
 	else if(cmd[0]=='a'){
-		base_cmd.angular.z = 0.75;
+		base_cmd.angular.z = 0.25;
 		//base_cmd.linear.x = 0.25;
 	
 	} 
 
 	//turn right (yaw) and drive forward at the same time
 	else if(cmd[0]=='d'){
-		base_cmd.angular.z = -0.75;
+		base_cmd.angular.z = -0.25;
 		//base_cmd.linear.x = 0.25;
 	
 	}
 
 	//turn right (yaw) and drive forward at the same time
 	else if(cmd[0]=='s'){
-		base_cmd.linear.x = -0.25;
+		base_cmd.linear.x = -0.5;
 	
 	} 
 
@@ -101,7 +102,7 @@ pcl::PointCloud<pcl::PointNormal>::Ptr detectorCaracteristicas(pcl::PointCloud<p
 }
 
 
-pcl::PointCloud<pcl::PointWithScale>::Ptr calculateKeyPoints(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filtered, pcl::PointCloud<pcl::PointNormal>::Ptr cloud_normals){
+pcl::PointCloud<pcl::PointWithScale>::Ptr calculateKeyPoints(pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud_filtered, pcl::PointCloud<pcl::PointNormal>::Ptr& cloud_normals){
 
 	for(size_t i = 0; i<cloud_normals->points.size(); ++i)
   	{
@@ -119,7 +120,7 @@ pcl::PointCloud<pcl::PointWithScale>::Ptr calculateKeyPoints(pcl::PointCloud<pcl
 	*/
 
 	// Parameters for sift computation
-  	const float min_scale = 0.1f;
+  	const float min_scale = 0.02f;
  	const int n_octaves = 3;
  	const int n_scales_per_octave = 4;
   	const float min_contrast = 0.001f;
@@ -133,6 +134,7 @@ pcl::PointCloud<pcl::PointWithScale>::Ptr calculateKeyPoints(pcl::PointCloud<pcl
 	sift.setScales(min_scale, n_octaves, n_scales_per_octave);
 	sift.setMinimumContrast(min_contrast);
 	sift.setInputCloud(cloud_normals);
+	//sift.setRadiusSearch(0.05);
 	sift.compute(*result);
 	
 	return result;
@@ -140,8 +142,8 @@ pcl::PointCloud<pcl::PointWithScale>::Ptr calculateKeyPoints(pcl::PointCloud<pcl
 }
 
 
-pcl::PointCloud<pcl::FPFHSignature33>::Ptr descriptorCarateristicas(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filtered, pcl::PointCloud<pcl::PointNormal>::Ptr cloud_normals,
-										pcl::PointCloud<pcl::PointWithScale>::Ptr keypoints){
+pcl::PointCloud<pcl::FPFHSignature33>::Ptr descriptorCarateristicas(pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud_filtered, pcl::PointCloud<pcl::PointNormal>::Ptr& cloud_normals,
+										pcl::PointCloud<pcl::PointWithScale>::Ptr& keypoints){
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr keypoints_cloud (new pcl::PointCloud<pcl::PointXYZRGB>);
 
@@ -168,10 +170,6 @@ pcl::PointCloud<pcl::FPFHSignature33>::Ptr descriptorCarateristicas(pcl::PointCl
 	return result;
 }
 
-void emparejar(){}
-
-void ransac(){}
-
 void callback(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr& msg)
 {
 	// Codigo inicial
@@ -183,7 +181,7 @@ void callback(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr& msg)
 
 	pcl::VoxelGrid<pcl::PointXYZRGB > vGrid;
 	vGrid.setInputCloud (cloud);
-	vGrid.setLeafSize (0.025f, 0.025f, 0.025f);
+	vGrid.setLeafSize (0.03f, 0.03f, 0.03f);
 	vGrid.filter (*cloud_filtered);
 
 	cout << "Puntos tras VG: " << cloud_filtered->size() << endl;
@@ -219,7 +217,7 @@ void callback(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr& msg)
 		ransac.setInputSource(anterior_keypoints);
 		ransac.setInputTarget(keypoints);
 		ransac.setInlierThreshold(0.025);
-		ransac.setMaximumIterations(10000);
+		ransac.setMaximumIterations(100000);
 		ransac.setRefineModel(true);
 		ransac.setInputCorrespondences(correspondences_p); 
 
