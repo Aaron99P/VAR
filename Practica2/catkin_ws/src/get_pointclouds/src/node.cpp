@@ -1,20 +1,21 @@
 #include <ros/ros.h>
-#include <pcl_ros/point_cloud.h>
-#include <pcl/point_types.h>
 #include <boost/foreach.hpp>
-#include <pcl/visualization/pcl_visualizer.h>
-#include <pcl/visualization/cloud_viewer.h>
-#include <pcl/filters/voxel_grid.h>
-#include <pcl/features/normal_3d.h>
 #include <pcl/io/pcd_io.h>
-#include <pcl/keypoints/sift_keypoint.h>
 #include <pcl/point_types.h>
 #include <pcl/features/fpfh.h>
-#include <pcl/registration/correspondence_estimation.h>
-#include <pcl/registration/correspondence_rejection.h>
-#include <pcl/registration/correspondence_rejection_sample_consensus.h>
+#include <pcl_ros/point_cloud.h>
 #include <geometry_msgs/Twist.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/keypoints/sift_keypoint.h>
+#include <pcl/visualization/cloud_viewer.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/registration/correspondence_rejection.h>
+#include <pcl/registration/correspondence_estimation.h>
+#include <pcl/registration/correspondence_rejection_sample_consensus.h>
 #include <pcl/registration/correspondence_estimation_normal_shooting.h>
+
+
 
 
 ros::Publisher cmd_vel_pub_;
@@ -39,26 +40,26 @@ void driveKeyboard() {
 	
 	//move forward
 	if(cmd[0]=='w'){
-		base_cmd.linear.x = 0.5;//0.25;
+		base_cmd.linear.x = 0.3;//0.25;
 	} 
 
 	//turn left (yaw) and drive forward at the same time
 	else if(cmd[0]=='a'){
-		base_cmd.angular.z = 0.25;
+		base_cmd.angular.z = 0.35;
 		//base_cmd.linear.x = 0.25;
 	
 	} 
 
 	//turn right (yaw) and drive forward at the same time
 	else if(cmd[0]=='d'){
-		base_cmd.angular.z = -0.25;
+		base_cmd.angular.z = -0.35;
 		//base_cmd.linear.x = 0.25;
 	
 	}
 
 	//turn right (yaw) and drive forward at the same time
 	else if(cmd[0]=='s'){
-		base_cmd.linear.x = -0.5;
+		base_cmd.linear.x = -0.3;
 	
 	} 
 
@@ -181,7 +182,7 @@ void callback(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr& msg)
 
 	pcl::VoxelGrid<pcl::PointXYZRGB > vGrid;
 	vGrid.setInputCloud (cloud);
-	vGrid.setLeafSize (0.03f, 0.03f, 0.03f);
+	vGrid.setLeafSize (0.02f, 0.02f, 0.02f);
 	vGrid.filter (*cloud_filtered);
 
 	cout << "Puntos tras VG: " << cloud_filtered->size() << endl;
@@ -216,7 +217,7 @@ void callback(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr& msg)
 		pcl::registration::CorrespondenceRejectorSampleConsensus<pcl::PointWithScale> ransac;
 		ransac.setInputSource(anterior_keypoints);
 		ransac.setInputTarget(keypoints);
-		ransac.setInlierThreshold(0.025);
+		ransac.setInlierThreshold(0.1);
 		ransac.setMaximumIterations(100000);
 		ransac.setRefineModel(true);
 		ransac.setInputCorrespondences(correspondences_p); 
@@ -264,9 +265,9 @@ int main(int argc, char** argv)
 	ros::NodeHandle nh;
 	cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("/mobile_base/commands/velocity", 1);
 	ros::Subscriber sub = nh.subscribe<pcl::PointCloud<pcl::PointXYZRGB> >("/camera/depth/points", 1, callback);
-
+	visu_pc = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>);
 	boost::thread t(simpleVis);
-
+	
 	while(ros::ok()){
 		ros::spinOnce();
 	}
