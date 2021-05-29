@@ -21,4 +21,8 @@ Ahora mismo se está utilizando:
 	- CorrespondenceEstimation para encontrar correspondencias
 	- CorrespondenceRejectorSampleConsensus (RANSAC) para descartar malas correspondencias
 
+Enlaces a los videos demostrativos de los resultados:
 
+Mapeado 3D: https://drive.google.com/file/d/19beIEhvxH-KHfd2X5Nz-ZICPyEm4N37r/view?usp=sharing
+
+Seguimiento de línea: https://drive.google.com/file/d/1T59kCfgOwZZbcglDp5JbmnGBFOv4xCoh/view?usp=sharing
