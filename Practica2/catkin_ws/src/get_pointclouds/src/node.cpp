@@ -8,6 +8,8 @@
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/features/normal_3d.h>
 #include <pcl/keypoints/sift_keypoint.h>
+#include <pcl/keypoints/harris_3d.h>
+#include <pcl/keypoints/narf_keypoint.h>
 #include <pcl/visualization/cloud_viewer.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/registration/correspondence_rejection.h>
@@ -45,14 +47,14 @@ void driveKeyboard() {
 
 	//turn left (yaw) and drive forward at the same time
 	else if(cmd[0]=='a'){
-		base_cmd.angular.z = 0.35;
+		base_cmd.angular.z = 0.2;
 		//base_cmd.linear.x = 0.25;
 	
 	} 
 
 	//turn right (yaw) and drive forward at the same time
 	else if(cmd[0]=='d'){
-		base_cmd.angular.z = -0.35;
+		base_cmd.angular.z = -0.2;
 		//base_cmd.linear.x = 0.25;
 	
 	}
@@ -103,7 +105,7 @@ pcl::PointCloud<pcl::PointNormal>::Ptr detectorCaracteristicas(pcl::PointCloud<p
 }
 
 
-pcl::PointCloud<pcl::PointWithScale>::Ptr calculateKeyPoints(pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud_filtered, pcl::PointCloud<pcl::PointNormal>::Ptr& cloud_normals){
+pcl::PointCloud<pcl::PointWithScale>::Ptr calculateKeyPoints(int dmethod, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud_filtered, pcl::PointCloud<pcl::PointNormal>::Ptr& cloud_normals){
 
 	for(size_t i = 0; i<cloud_normals->points.size(); ++i)
   	{
@@ -119,24 +121,53 @@ pcl::PointCloud<pcl::PointWithScale>::Ptr calculateKeyPoints(pcl::PointCloud<pcl
  	const int n_scales_per_octave = 10;
   	const float min_contrast = 0.5f;
 	*/
-
-	// Parameters for sift computation
-  	const float min_scale = 0.02f;
- 	const int n_octaves = 3;
- 	const int n_scales_per_octave = 4;
-  	const float min_contrast = 0.001f;
-  
-  
-	// Estimate the sift interest points using Intensity values from RGB values
-	pcl::SIFTKeypoint<pcl::PointNormal, pcl::PointWithScale> sift;
+	
 	pcl::PointCloud<pcl::PointWithScale>::Ptr result(new pcl::PointCloud<pcl::PointWithScale> ());
 	pcl::search::KdTree<pcl::PointNormal>::Ptr tree(new pcl::search::KdTree<pcl::PointNormal> ());
-	sift.setSearchMethod(tree);
-	sift.setScales(min_scale, n_octaves, n_scales_per_octave);
-	sift.setMinimumContrast(min_contrast);
-	sift.setInputCloud(cloud_normals);
-	//sift.setRadiusSearch(0.05);
-	sift.compute(*result);
+
+	switch (dmethod){
+		case 0:{
+			// float r_normal = 0.1;
+			// float r_keypoint = 0.1;
+			
+			// pcl::HarrisKeypoint3D<pcl::PointXYZ, pcl::PointXYZI, pcl::PointNormal>* HK3D = new pcl::HarrisKeypoint3D<pcl::PointXYZ, pcl::PointXYZI, pcl::PointNormal>;
+
+			// HK3D->setRadius(r_normal);
+			// HK3D->setRadiusSearch(r_keypoint); 
+			// HK3D->setInputCloud(cloud_normals);
+			// HK3D->setNormals(cloud_normals);
+			// HK3D->setSearchMethod(tree);
+			// HK3D->compute( *result);
+
+
+			break;
+		}
+		case 1:{
+
+			break;
+		}
+		default:{
+
+			// Parameters for sift computation
+			const float min_scale = 0.02f;
+			const int n_octaves = 4;
+			const int n_scales_per_octave = 8;
+			const float min_contrast = 0.001f;
+		
+		
+			// Estimate the sift interest points using Intensity values from RGB values
+			pcl::SIFTKeypoint<pcl::PointNormal, pcl::PointWithScale> sift;
+			sift.setSearchMethod(tree);
+			sift.setScales(min_scale, n_octaves, n_scales_per_octave);
+			sift.setMinimumContrast(min_contrast);
+			sift.setInputCloud(cloud_normals);
+			
+			//sift.setRadiusSearch(0.05);
+			sift.compute(*result);
+			break;
+		}
+	}
+	
 	
 	return result;
 
@@ -173,6 +204,8 @@ pcl::PointCloud<pcl::FPFHSignature33>::Ptr descriptorCarateristicas(pcl::PointCl
 
 void callback(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr& msg)
 {
+	driveKeyboard();
+
 	// Codigo inicial
 	//---------------------------------------------------------------------------------------------------
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGB>(*msg));
@@ -182,7 +215,7 @@ void callback(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr& msg)
 
 	pcl::VoxelGrid<pcl::PointXYZRGB > vGrid;
 	vGrid.setInputCloud (cloud);
-	vGrid.setLeafSize (0.02f, 0.02f, 0.02f);
+	vGrid.setLeafSize (0.01f, 0.01f, 0.01f);
 	vGrid.filter (*cloud_filtered);
 
 	cout << "Puntos tras VG: " << cloud_filtered->size() << endl;
@@ -194,7 +227,7 @@ void callback(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr& msg)
 	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_normals = detectorCaracteristicas(cloud_filtered);
 	
 	//Hallamos los key points
-	pcl::PointCloud<pcl::PointWithScale>::Ptr keypoints = calculateKeyPoints(cloud_filtered, cloud_normals);
+	pcl::PointCloud<pcl::PointWithScale>::Ptr keypoints = calculateKeyPoints(-1, cloud_filtered, cloud_normals);
 	
 	//Descriptor de características
 	pcl::PointCloud<pcl::FPFHSignature33>::Ptr cloud_features = descriptorCarateristicas(cloud_filtered, cloud_normals, keypoints);
@@ -232,7 +265,7 @@ void callback(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr& msg)
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformed_cloud (new pcl::PointCloud<pcl::PointXYZRGB>);
 		pcl::transformPointCloud(*visu_pc, *transformed_cloud, transformation);
 
-		*visu_pc = *transformed_cloud + *cloud;
+		*visu_pc = *transformed_cloud + *cloud_filtered;
 
 
 	}else{
@@ -242,9 +275,10 @@ void callback(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr& msg)
 	anterior_keypoints = keypoints;
 	anterior_features = cloud_features;
 
+	anterior_features = cloud_features;
+
 	primero = false;
 
-	driveKeyboard();
 	
 }
 
