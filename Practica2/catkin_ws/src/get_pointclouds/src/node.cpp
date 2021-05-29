@@ -28,50 +28,45 @@ void driveKeyboard() {
 
 	std::cout << "Type a command and then press enter.  "
 	"Use 'w' to move forward, 'a' to turn left, "
-	"'d' to turn right, '.' to exit.\n";
+	"'d' to turn right, or any other character to do nothing.\n";
 
-	//we will be sending commands of type "twist"
 	geometry_msgs::Twist base_cmd;
 
 	char cmd[50];
 	std::cin.getline(cmd, 50);
 
-	if(cmd[0]!='w' && cmd[0]!='a' && cmd[0]!='d' && cmd[0]!='s' && cmd[0]!='.') std::cout << "unknown command:" << cmd << "\n";
-
 	base_cmd.linear.x = base_cmd.linear.y = base_cmd.angular.z = 0;   
-	
-	//move forward
-	if(cmd[0]=='w'){
-		base_cmd.linear.x = 0.3;//0.25;
-	} 
-
-	//turn left (yaw) and drive forward at the same time
-	else if(cmd[0]=='a'){
-		base_cmd.angular.z = 0.2;
-		//base_cmd.linear.x = 0.25;
-	
-	} 
-
-	//turn right (yaw) and drive forward at the same time
-	else if(cmd[0]=='d'){
-		base_cmd.angular.z = -0.2;
-		//base_cmd.linear.x = 0.25;
-	
+	switch (cmd[0]) {
+		case 'w':{
+			base_cmd.linear.x = 0.3;
+			break;
+		}
+		case 'a':{
+			base_cmd.angular.z = 0.2;
+			break;
+		}
+		case 'd':{
+			base_cmd.angular.z = -0.2;
+			break;
+		}
+		case 's':{
+			base_cmd.linear.x = -0.3;
+			break;
+		}
+		default:{
+			break;
+		}
+			
 	}
 
-	//turn right (yaw) and drive forward at the same time
-	else if(cmd[0]=='s'){
-		base_cmd.linear.x = -0.3;
-	
-	} 
-
-	//publish the assembled command
+	//lanzamos el comando creado
 	cmd_vel_pub_.publish(base_cmd);   
 
 }
 
-
+// mapa de puntos 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr visu_pc (new pcl::PointCloud<pcl::PointXYZRGB>);
+
 
 pcl::PointCloud<pcl::PointWithScale>::Ptr anterior_keypoints;
 pcl::PointCloud<pcl::FPFHSignature33>::Ptr anterior_features;
@@ -89,9 +84,11 @@ void simpleVis ()
 
 }
 
-pcl::PointCloud<pcl::PointNormal>::Ptr detectorCaracteristicas(pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud){
 
-	pcl::NormalEstimation<pcl::PointXYZRGB, pcl::PointNormal> normalEst; //detector de características
+// estimacion de normales
+pcl::PointCloud<pcl::PointNormal>::Ptr calculateNormal(pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud){
+
+	pcl::NormalEstimation<pcl::PointXYZRGB, pcl::PointNormal> normalEst; // normales estimadas
  	normalEst.setInputCloud(cloud);
 
 	pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree_n(new pcl::search::KdTree<pcl::PointXYZRGB>()); //método de búsqueda utilizado por el descriptor
@@ -113,39 +110,32 @@ pcl::PointCloud<pcl::PointWithScale>::Ptr calculateKeyPoints(int dmethod, pcl::P
     	cloud_normals->points[i].y = cloud_filtered->points[i].y;
     	cloud_normals->points[i].z = cloud_filtered->points[i].z;
   	}
-
-	/*
-	// Parameters for sift computation
-  	const float min_scale = 0.1f;
- 	const int n_octaves = 6;
- 	const int n_scales_per_octave = 10;
-  	const float min_contrast = 0.5f;
-	*/
 	
 	pcl::PointCloud<pcl::PointWithScale>::Ptr result(new pcl::PointCloud<pcl::PointWithScale> ());
 	pcl::search::KdTree<pcl::PointNormal>::Ptr tree(new pcl::search::KdTree<pcl::PointNormal> ());
 
 	switch (dmethod){
-		case 0:{
-			// float r_normal = 0.1;
-			// float r_keypoint = 0.1;
+		// case 0:{
+		// 	float r_normal = 0.1;
+		// 	float r_keypoint = 0.1;
 			
-			// pcl::HarrisKeypoint3D<pcl::PointXYZ, pcl::PointXYZI, pcl::PointNormal>* HK3D = new pcl::HarrisKeypoint3D<pcl::PointXYZ, pcl::PointXYZI, pcl::PointNormal>;
+		// 	pcl::HarrisKeypoint3D<pcl::PointXYZ, pcl::PointXYZI, pcl::PointNormal>* HK3D = new pcl::HarrisKeypoint3D<pcl::PointXYZ, pcl::PointXYZI, pcl::PointNormal>;
 
-			// HK3D->setRadius(r_normal);
-			// HK3D->setRadiusSearch(r_keypoint); 
-			// HK3D->setInputCloud(cloud_normals);
-			// HK3D->setNormals(cloud_normals);
-			// HK3D->setSearchMethod(tree);
-			// HK3D->compute( *result);
+		// 	HK3D->setRadius(r_normal);
+		// 	HK3D->setRadiusSearch(r_keypoint); 
+		// 	HK3D->setInputCloud(cloud_normals);
+		// 	HK3D->setNormals(cloud_normals);
+		// 	HK3D->setSearchMethod(tree);
+		// 	HK3D->compute( *result);
 
 
-			break;
-		}
-		case 1:{
+		// 	break;
+		// }
+		// case 1:{
 
-			break;
-		}
+		// 	break;
+		// }
+
 		default:{
 
 			// Parameters for sift computation
@@ -223,8 +213,8 @@ void callback(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr& msg)
 	//visu_pc = cloud_filtered;
 	//---------------------------------------------------------------------------------------------------
 	
-	//Detector de características
-	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_normals = detectorCaracteristicas(cloud_filtered);
+	//Se calculan las normales
+	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_normals = calculateNormal(cloud_filtered);
 	
 	//Hallamos los key points
 	pcl::PointCloud<pcl::PointWithScale>::Ptr keypoints = calculateKeyPoints(-1, cloud_filtered, cloud_normals);
